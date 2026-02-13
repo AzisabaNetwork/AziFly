@@ -1,0 +1,17 @@
+name: AziFly
+version: '1.0-SNAPSHOT'
+main: net.azisaba.azifly.AziFly
+api-version: '1.15'
+description: Easy fly plugin
+author: Azisaba Network
+depend:
+  - Vault
+commands:
+  azifly:
+    description: 飛行モードを切り替えます
+    usage: /azifly [player] [seconds]
+    aliases: fly
+permissions:
+  azifly.admin:
+    description: お金と時間制限を無視して飛行できます
+    default: op

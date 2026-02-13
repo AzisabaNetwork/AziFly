@@ -1,0 +1,28 @@
+# AziFly Configuration
+
+# Prefixの設定
+prefix: "&7[&dAziFly&7]"
+
+# 1分あたりの飛行料金
+cost-per-minutes: 300
+
+# デフォルトの飛行時間 (分)
+default-time-minutes: 10
+
+disabled-worlds:
+  - "example_world"
+
+messages:
+  fly-enabled: "&6飛行モードを&aON&6にしました (残り: {time}秒)"
+  fly-enabled-by-admin: "&b{name}&6の飛行モードを&aON&6にしました．"
+  fly-disabled: "&6飛行モードを&cOFF&6にしました．"
+  fly-paid: "&e{amount}円&f支払いました．"
+  fly-refunded: "&6飛行モードが終了したため，&e{amount}円&6返金されました．"
+  insufficient-funds: "&cお金が足りません！ ({amount}円必要です)"
+  world-disabled: "&cこのワールドでは飛行が禁止されています．"
+  admin-bypass: "&b管理者権限で飛行を開始しました"
+  reload-complete: "&aConfigを再読み込みしました．"
+  no-permission: "&c権限がありません．"
+  player-not-found: "&cプレイヤーが見つかりません．"
+  invalid-number: "&c数字で指定してください．"
+  console-error: "&cコンソールからは実行できません．"
