@@ -1,6 +1,7 @@
 package net.azisaba.azifly.commands
 
 import net.azisaba.azifly.AziFly
+import net.azisaba.lifetutorialassist.sql.DBConnector
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
@@ -83,41 +84,69 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor {
             cost = minutes * costPerMinute
         }
 
-        if (cost > 0) {
-            val balance = plugin.economy?.getBalance(sender as Player) ?: 0.0
-            if (balance < cost) {
-                val msg = plugin.getMessage("insufficient-funds").replace("{amount}", cost.toInt().toString())
-                sender.sendMessage(msg)
-                return true
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
+            var isTutorialIncomplete = false
+            if (cost > 0) {
+                try {
+                    val taskId = plugin.config.getString("tutorial-task-id", "fly_intro") ?: "fly_intro"
+                    val isCompleted = DBConnector.isCompleted(targetPlayer.uniqueId, taskId)
+                    isTutorialIncomplete = !isCompleted
+                } catch (e: Exception) {
+                    plugin.logger.warning("LifeTutorialAssistとの通信に失敗しました: ${e.message}")
+                }
             }
-            plugin.economy?.withdrawPlayer(sender as Player, cost)
-            val payMsg = plugin.getMessage("fly-paid").replace("{amount}", cost.toInt().toString())
-            sender.sendMessage(payMsg)
-        }
 
-        targetPlayer.allowFlight = true
-        targetPlayer.isFlying = true
+            Bukkit.getScheduler().runTask(plugin, Runnable {
+                var finalCost = cost
 
-        if (isAdmin || !isSelf) {
-            targetPlayer.sendMessage(plugin.getMessage("admin-bypass"))
-            if (sender != targetPlayer) {
-                sender.sendMessage(plugin.getMessage("fly-enabled-admin").replace("{name}", targetPlayer.name))
-            }
-        } else {
-            val msg = plugin.getMessage("fly-enabled").replace("{time}", seconds.toString())
-            targetPlayer.sendMessage(msg)
-        }
+                if (isTutorialIncomplete) {
+                    finalCost = 0.0
+                    targetPlayer.sendMessage(plugin.getMessage("tutorial-free"))
+                }
+                if (finalCost > 0) {
+                    val balance = plugin.economy?.getBalance(sender as Player) ?: 0.0
+                    if (balance < finalCost) {
+                        val msg = plugin.getMessage("insufficient-funds").replace("{amount}", finalCost.toInt().toString())
+                        sender.sendMessage(msg)
+                        return@Runnable
+                    }
+                    plugin.economy?.withdrawPlayer(sender as Player, finalCost)
+                    sender.sendMessage(plugin.getMessage("fly-paid").replace("{amount}", finalCost.toInt().toString()))
+                }
 
-        if (isAdmin || !isSelf) return true
-        val taskId = Bukkit.getScheduler().runTaskLater(plugin, Runnable {
-            if (targetPlayer.isOnline) {
-                plugin.stopFlight(targetPlayer, false)
-            }
-        }, seconds.toLong() * 20L).taskId
+                targetPlayer.allowFlight = true
+                targetPlayer.isFlying = true
 
-        val session = AziFly.FlightSession(taskId, System.currentTimeMillis(), cost, seconds)
-        plugin.flightSessions[targetPlayer.uniqueId] = session
+                val m = seconds / 60
+                val s = seconds % 60
+                val timeStr = buildString {
+                    if (m > 0) append("${m}分")
+                    if (s > 0 || m == 0) append("${s}秒")
+                }
 
+                if (isAdmin || !isSelf) {
+                    targetPlayer.sendMessage(plugin.getMessage("admin-bypass"))
+                    if (sender != targetPlayer) {
+                        sender.sendMessage(plugin.getMessage("fly-enabled-by-admin").replace("{name}", targetPlayer.name))
+                    }
+                } else {
+                    val msg = plugin.getMessage("fly-enabled")
+                        .replace("{time}秒", timeStr)
+                        .replace("{time}", timeStr)
+                    targetPlayer.sendMessage(msg)
+                }
+
+                if (isAdmin || !isSelf) return@Runnable
+                val taskId = Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+                    if (targetPlayer.isOnline) {
+                        plugin.stopFlight(targetPlayer, false)
+                    }
+                }, seconds.toLong() * 20L).taskId
+
+                val session = AziFly.FlightSession(taskId, System.currentTimeMillis(), finalCost, seconds)
+                plugin.flightSessions[targetPlayer.uniqueId] = session
+            })
+        })
         return true
     }
 }

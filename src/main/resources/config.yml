@@ -15,6 +15,7 @@ disabled-worlds:
 messages:
   fly-enabled: "&6飛行モードを&aON&6にしました (残り: {time}秒)"
   fly-enabled-by-admin: "&b{name}&6の飛行モードを&aON&6にしました．"
+  tutorial-free: "&6チュートリアルのため、無料で飛行を開始しました．&6もう一度&a/fly&6で飛行を&cOFF&6にできます．"
   fly-disabled: "&6飛行モードを&cOFF&6にしました．"
   fly-paid: "&e{amount}円&f支払いました．"
   fly-refunded: "&6飛行モードが終了したため，&e{amount}円&6返金されました．"

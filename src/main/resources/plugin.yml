@@ -6,6 +6,8 @@ description: Easy fly plugin
 author: Azisaba Network
 depend:
   - Vault
+softdepend:
+  - LifeTutorialAssist
 commands:
   azifly:
     description: 飛行モードを切り替えます
