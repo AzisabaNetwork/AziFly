@@ -1,6 +1,7 @@
 package net.azisaba.azifly.listener
 
 import net.azisaba.azifly.AziFly
+import net.azisaba.azifly.manager.sendLangMessage
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerChangedWorldEvent
@@ -16,11 +17,11 @@ class WorldListener(private val plugin: AziFly) : Listener {
 
             if (plugin.flightSessions.containsKey(player.uniqueId)) {
                 plugin.stopFlight(player, true)
-                player.sendMessage(plugin.getMessage("world-disabled"))
+                player.sendLangMessage("world-disabled")
             } else if (player.allowFlight) {
                 player.allowFlight = false
                 player.isFlying = false
-                player.sendMessage(plugin.getMessage("world-disabled"))
+                player.sendLangMessage("world-disabled")
             }
         }
     }

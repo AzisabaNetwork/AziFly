@@ -25,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("com.destroystokyo.paper:paper-api:1.15.2-R0.1-SNAPSHOT")
+    compileOnly("com.destroystokyo.paper:paper-api:1.13.2-R0.1-SNAPSHOT")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7")
     compileOnly("net.azisaba:LifeTutorialAssist:1.0-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")

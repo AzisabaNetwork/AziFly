@@ -1,8 +1,8 @@
 name: AziFly
-version: '1.0-SNAPSHOT'
+version: @version@
 main: net.azisaba.azifly.AziFly
-api-version: '1.15'
-description: Easy fly plugin
+api-version: '1.13'
+description: Fly plugin for Life server
 author: Azisaba Network
 depend:
   - Vault
@@ -10,10 +10,10 @@ softdepend:
   - LifeTutorialAssist
 commands:
   azifly:
-    description: 飛行モードを切り替えます
+    description: switch fly mode
     usage: /azifly [player] [seconds]
     aliases: fly
 permissions:
   azifly.admin:
-    description: お金と時間制限を無視して飛行できます
+    description: fly without time and world limits
     default: op

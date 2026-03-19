@@ -1,25 +1,44 @@
 package net.azisaba.azifly.commands
 
 import net.azisaba.azifly.AziFly
+import net.azisaba.azifly.hook.EconomyHandler
+import net.azisaba.azifly.manager.MessageManager
+import net.azisaba.azifly.manager.sendLangMessage
 import net.azisaba.lifetutorialassist.sql.DBConnector
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
+import org.bukkit.command.TabCompleter
 import org.bukkit.entity.Player
 import kotlin.math.ceil
 
-class FlyCommand(private val plugin : AziFly) : CommandExecutor {
+class FlyCommand(private val plugin : AziFly) : CommandExecutor, TabCompleter {
+
+    private fun parseTime(input: String): Int? {
+        val regex = Regex("^(\\d+)([smh]?)$", RegexOption.IGNORE_CASE)
+        val matchResult = regex.find(input) ?: return input.toIntOrNull()
+        
+        val value = matchResult.groupValues[1].toInt()
+        val unit = matchResult.groupValues[2].lowercase()
+        
+        return when (unit) {
+            "s" -> value
+            "m" -> value * 60
+            "h" -> value * 3600
+            else -> value
+        }
+    }
 
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (args.isNotEmpty() && args[0].equals("reload", true)) {
             if (!sender.hasPermission("azifly.admin")) {
-                sender.sendMessage(plugin.getMessage("no-permission"))
+                sender.sendLangMessage("no-permission")
                 return true
             }
             plugin.reloadConfig()
             plugin.saveDefaultConfig()
-            sender.sendMessage(plugin.getMessage("reload-complete"))
+            sender.sendLangMessage("reload-complete")
             return true
         }
 
@@ -29,32 +48,32 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor {
 
         if (args.isEmpty()) {
             if (sender !is Player) {
-                sender.sendMessage(plugin.getMessage("console-error"))
+                sender.sendLangMessage("console-error")
                 return true
             }
             targetPlayer = sender
         } else {
-            val firstArgAsInt = args[0].toIntOrNull()
-            if (firstArgAsInt != null) {
+            val firstArgTime = parseTime(args[0])
+            if (firstArgTime != null) {
                 if (sender !is Player) {
-                    sender.sendMessage(plugin.getMessage("console-error"))
+                    sender.sendLangMessage("console-error")
                     return true
                 }
                 targetPlayer = sender
-                seconds = firstArgAsInt
+                seconds = firstArgTime
             } else {
                 if (!sender.hasPermission("azifly.admin")) {
-                    sender.sendMessage(plugin.getMessage("no-permission"))
+                    sender.sendLangMessage("no-permission")
                     return true
                 }
 
                 targetPlayer = Bukkit.getPlayer(args[0])
                 if (targetPlayer == null) {
-                    sender.sendMessage(plugin.getMessage("player-not-found"))
+                    sender.sendLangMessage("player-not-found")
                     return true
                 }
                 if (args.size >= 2) {
-                    args[1].toIntOrNull()?.let { seconds = it }
+                    parseTime(args[1])?.let { seconds = it }
                 }
             }
         }
@@ -63,15 +82,13 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor {
             plugin.stopFlight(targetPlayer, true)
             return true
         } else if (targetPlayer.allowFlight) {
-            targetPlayer.allowFlight = false
-            targetPlayer.isFlying = false
-            sender.sendMessage(plugin.getMessage("fly-disabled"))
+            sender.sendLangMessage("already-flying")
             return true
         }
 
         val disabledWorlds = plugin.config.getStringList("disabled-worlds")
         if (disabledWorlds.contains(targetPlayer.world.name) && !targetPlayer.hasPermission("azifly.admin")) {
-            sender.sendMessage(plugin.getMessage("world-disabled"))
+            sender.sendLangMessage("world-disabled")
             return true
         }
 
@@ -92,7 +109,7 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor {
                     val isCompleted = DBConnector.isCompleted(targetPlayer.uniqueId, taskId)
                     isTutorialIncomplete = !isCompleted
                 } catch (e: Exception) {
-                    plugin.logger.warning("LifeTutorialAssistとの通信に失敗しました: ${e.message}")
+                    plugin.logger.warning("Failed to fetch tutorial status from LifeTutorialAssist: ${e.message}")
                 }
             }
 
@@ -101,39 +118,40 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor {
 
                 if (isTutorialIncomplete) {
                     finalCost = 0.0
-                    targetPlayer.sendMessage(plugin.getMessage("tutorial-free"))
+                    targetPlayer.sendLangMessage("tutorial-free")
                 }
                 if (finalCost > 0) {
-                    val balance = plugin.economy?.getBalance(sender as Player) ?: 0.0
+                    val balance = EconomyHandler.getBalance(sender as Player)
                     if (balance < finalCost) {
-                        val msg = plugin.getMessage("insufficient-funds").replace("{amount}", finalCost.toInt().toString())
-                        sender.sendMessage(msg)
+                        sender.sendLangMessage("insufficient-funds", "amount" to finalCost.toInt().toString())
                         return@Runnable
                     }
-                    plugin.economy?.withdrawPlayer(sender as Player, finalCost)
-                    sender.sendMessage(plugin.getMessage("fly-paid").replace("{amount}", finalCost.toInt().toString()))
+                    EconomyHandler.withdraw(sender as Player, finalCost)
+                    sender.sendLangMessage("fly-paid", "amount" to finalCost.toInt().toString())
                 }
 
                 targetPlayer.allowFlight = true
                 targetPlayer.isFlying = true
 
-                val m = seconds / 60
+                val h = seconds / 3600
+                val m = (seconds % 3600) / 60
                 val s = seconds % 60
+                val unitH = MessageManager.getMessage(targetPlayer, "unit-hour")
+                val unitM = MessageManager.getMessage(targetPlayer, "unit-minute")
+                val unitS = MessageManager.getMessage(targetPlayer, "unit-second")
                 val timeStr = buildString {
-                    if (m > 0) append("${m}分")
-                    if (s > 0 || m == 0) append("${s}秒")
+                    if (h > 0) append("${h}$unitH")
+                    if (m > 0) append("${m}$unitM")
+                    if (s > 0 || (h == 0 && m == 0)) append("${s}$unitS")
                 }
 
                 if (isAdmin || !isSelf) {
-                    targetPlayer.sendMessage(plugin.getMessage("admin-bypass"))
+                    targetPlayer.sendLangMessage("admin-bypass")
                     if (sender != targetPlayer) {
-                        sender.sendMessage(plugin.getMessage("fly-enabled-by-admin").replace("{name}", targetPlayer.name))
+                        sender.sendLangMessage("fly-enabled-by-admin", "name" to targetPlayer.name)
                     }
                 } else {
-                    val msg = plugin.getMessage("fly-enabled")
-                        .replace("{time}秒", timeStr)
-                        .replace("{time}", timeStr)
-                    targetPlayer.sendMessage(msg)
+                    targetPlayer.sendLangMessage("fly-enabled", "time" to timeStr)
                 }
 
                 if (isAdmin || !isSelf) return@Runnable
@@ -148,5 +166,23 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor {
             })
         })
         return true
+    }
+
+    override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): List<String>? {
+        if (args.size == 1) {
+            val suggestions = mutableListOf<String>()
+            if (sender.hasPermission("azifly.admin")) {
+                suggestions.add("reload")
+                Bukkit.getOnlinePlayers().forEach { suggestions.add(it.name) }
+            }
+            suggestions.addAll(listOf("10m", "30m", "1h"))
+            return suggestions.filter { it.startsWith(args[0], true) }
+        }
+        if (args.size == 2) {
+            if (sender.hasPermission("azifly.admin") && parseTime(args[0]) == null && args[0].lowercase() != "reload") {
+                return listOf("10m", "30m", "1h").filter { it.startsWith(args[1], true) }
+            }
+        }
+        return emptyList()
     }
 }

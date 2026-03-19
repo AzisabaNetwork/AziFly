@@ -1,8 +1,10 @@
 package net.azisaba.azifly
 
 import net.azisaba.azifly.commands.FlyCommand
+import net.azisaba.azifly.hook.EconomyHandler
 import net.azisaba.azifly.listener.WorldListener
-import net.milkbowl.vault.economy.Economy
+import net.azisaba.azifly.manager.MessageManager
+import net.azisaba.azifly.manager.sendLangMessage
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
@@ -11,21 +13,17 @@ import kotlin.math.floor
 
 class AziFly : JavaPlugin() {
 
-    var economy : Economy? = null
     val flightSessions = HashMap<UUID, FlightSession>()
 
     override fun onEnable() {
+        MessageManager.init(this)
+        EconomyHandler.init(this)
         saveDefaultConfig()
-
-        if (!setupEconomy()) {
-            logger.severe("Vaultが見つからなかったため，プラグインを無効化します．")
-            server.pluginManager.disablePlugin(this)
-            return
-        }
-
-        getCommand("azifly")?.setExecutor(FlyCommand(this))
+        val flyCommand = FlyCommand(this)
+        getCommand("azifly")?.setExecutor(flyCommand)
+        getCommand("azifly")?.tabCompleter = flyCommand
         server.pluginManager.registerEvents(WorldListener(this), this)
-        logger.info("AziFly has been enabled")
+        logger.info("AziFly has been enabled.")
     }
 
     override fun onDisable() {
@@ -37,30 +35,16 @@ class AziFly : JavaPlugin() {
             }
         }
         flightSessions.clear()
-        logger.info("AziFly has been disabled")
+        logger.info("AziFly has been disabled.")
     }
 
-    private fun setupEconomy(): Boolean {
-        if (!server.pluginManager.isPluginEnabled("Vault")) {
-            return false
-        }
-        val rsp = server.servicesManager.getRegistration(Economy::class.java) ?: return false
-        economy = rsp.provider
-        return economy != null
-    }
-
-    fun getMessage(key: String): String {
-        val prefix = config.getString("prefix", "") ?: ""
-        val msg = config.getString("messages.$key", "&cメッセージが見つかりません: $key") ?: ""
-        return ("$prefix $msg").color()
-    }
 
     fun stopFlight(player: Player, refund: Boolean) {
         val session = flightSessions.remove(player.uniqueId)
 
         player.allowFlight = false
         player.isFlying = false
-        player.sendMessage(getMessage("fly-disabled"))
+        player.sendLangMessage("fly-disabled")
 
         if (session != null) {
             server.scheduler.cancelTask(session.taskId)
@@ -73,9 +57,8 @@ class AziFly : JavaPlugin() {
                     val finalRefund = floor(refundAmount)
 
                     if (finalRefund > 0) {
-                        economy?.depositPlayer(player, finalRefund)
-                        val msg = getMessage("fly-refunded").replace("{amount}", finalRefund.toInt().toString())
-                        player.sendMessage(msg)
+                        EconomyHandler.deposit(player, finalRefund)
+                        player.sendLangMessage("fly-refunded", "amount" to finalRefund.toInt().toString())
                     }
                 }
             }
@@ -88,8 +71,4 @@ class AziFly : JavaPlugin() {
         val paidAmount: Double,
         val durationSeconds: Int
     )
-}
-
-fun String.color(): String {
-    return org.bukkit.ChatColor.translateAlternateColorCodes('&', this)
 }
