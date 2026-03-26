@@ -1,5 +1,5 @@
 name: AziFly
-version: @version@
+version: ${version}'
 main: net.azisaba.azifly.AziFly
 api-version: '1.13'
 description: Fly plugin for Life server
