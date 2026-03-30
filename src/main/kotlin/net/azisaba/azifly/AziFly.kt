@@ -47,7 +47,9 @@ class AziFly : JavaPlugin() {
         player.sendLangMessage("fly-disabled")
 
         if (session != null) {
-            server.scheduler.cancelTask(session.taskId)
+            if (session.taskId != -1) {
+                server.scheduler.cancelTask(session.taskId)
+            }
             if (refund && session.paidAmount > 0) {
                 val elapsedMillis = System.currentTimeMillis() - session.startTime
                 val remainingSeconds = session.durationSeconds - (elapsedMillis / 1000.0)

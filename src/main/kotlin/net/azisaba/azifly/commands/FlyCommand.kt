@@ -102,6 +102,7 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor, TabCompleter {
         }
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
+            /*
             var isTutorialIncomplete = false
             if (cost > 0) {
                 try {
@@ -112,14 +113,18 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor, TabCompleter {
                     plugin.logger.warning("Failed to fetch tutorial status from LifeTutorialAssist: ${e.message}")
                 }
             }
+             */
 
             Bukkit.getScheduler().runTask(plugin, Runnable {
                 var finalCost = cost
 
+                /*
                 if (isTutorialIncomplete) {
                     finalCost = 0.0
                     targetPlayer.sendLangMessage("tutorial-free")
                 }
+                 */
+
                 if (finalCost > 0) {
                     val balance = EconomyHandler.getBalance(sender as Player)
                     if (balance < finalCost) {
@@ -154,12 +159,15 @@ class FlyCommand(private val plugin : AziFly) : CommandExecutor, TabCompleter {
                     targetPlayer.sendLangMessage("fly-enabled", "time" to timeStr)
                 }
 
-                if (isAdmin || !isSelf) return@Runnable
-                val taskId = Bukkit.getScheduler().runTaskLater(plugin, Runnable {
-                    if (targetPlayer.isOnline) {
-                        plugin.stopFlight(targetPlayer, false)
-                    }
-                }, seconds.toLong() * 20L).taskId
+                val taskId = if (isAdmin || !isSelf) {
+                    -1
+                } else {
+                    Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+                        if (targetPlayer.isOnline) {
+                            plugin.stopFlight(targetPlayer, false)
+                        }
+                    }, seconds.toLong() * 20L).taskId
+                }
 
                 val session = AziFly.FlightSession(taskId, System.currentTimeMillis(), finalCost, seconds)
                 plugin.flightSessions[targetPlayer.uniqueId] = session
