@@ -1,7 +1,6 @@
 plugins {
     kotlin("jvm") version "2.3.20-Beta2"
     id("com.gradleup.shadow") version "8.3.0"
-    id("xyz.jpenilla.run-paper") version "2.3.1"
 }
 
 group = "net.azisaba"
